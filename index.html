@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#090c10" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>SKY WARRIORS 3D — Modern Air Combat Simulator</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- MAIN 3D WEBGL VIEWPORT -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- ROTATE DEVICE HINT (PORTRAIT ON MOBILE) -->
+  <div id="rotate-notice" class="rotate-notice hidden">
+    <div class="rotate-card">
+      <div class="rotate-icon">✈</div>
+      <h3 data-i18n="rotate_title">PUTAR LAYAR KE LANDSCAPE</h3>
+      <p data-i18n="rotate_desc">Gunakan orientasi mendatar (Landscape) untuk kontrol pesawat tempur yang optimal.</p>
+      <button id="btn-dismiss-rotate" class="btn-secondary-sm" data-i18n="continue_anyway">LANJUTKAN</button>
+    </div>
+  </div>
+
+  <!-- 1. LOADING SCREEN -->
+  <section id="screen-loading" class="screen active">
+    <div class="loading-backdrop"></div>
+    <div class="loading-content">
+      <div class="brand-emblem">
+        <span class="emblem-wing left"></span>
+        <div class="emblem-core">SW3D</div>
+        <span class="emblem-wing right"></span>
+      </div>
+      <h1 class="game-title">SKY WARRIORS <span>3D</span></h1>
+      <p class="game-subtitle" data-i18n="loading_sub">TACTICAL AERIAL COMBAT SIMULATOR</p>
+
+      <div class="loading-bar-wrap">
+        <div class="loading-bar-header">
+          <span id="loading-status" data-i18n="loading_init">MEMUAT MESIN GRAFIS 3D HD...</span>
+          <span id="loading-percent">0%</span>
+        </div>
+        <div class="loading-track">
+          <div id="loading-fill" class="loading-fill"></div>
+        </div>
+      </div>
+
+      <div class="loading-tip" id="loading-tip">
+        TIP: Gunakan Flare (FLR) saat radar mendeteksi rudal musuh mendekat.
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. MAIN LOBBY SCREEN -->
+  <section id="screen-lobby" class="screen">
+    <!-- Top Header Bar -->
+    <header class="top-bar">
+      <div class="pilot-card">
+        <div class="level-hex">
+          <span class="lvl-label">LVL</span>
+          <span id="lobby-level">1</span>
+        </div>
+        <div class="pilot-info">
+          <div class="pilot-name-row">
+            <span class="pilot-callsign">VIPER-01</span>
+            <span id="lobby-rank" class="pilot-rank">CADET PILOT</span>
+          </div>
+          <div class="xp-bar-container">
+            <div id="lobby-xp-fill" class="xp-bar-fill" style="width: 25%;"></div>
+          </div>
+          <div class="xp-text"><span id="lobby-xp-text">250 / 1000 XP</span></div>
+        </div>
+      </div>
+
+      <div class="active-jet-banner">
+        <span class="banner-tag" data-i18n="active_aircraft">PESAWAT AKTIF</span>
+        <strong id="lobby-jet-name">F-16 FIGHTING FALCON</strong>
+      </div>
+
+      <div class="top-actions">
+        <div class="currency-pill" title="Combat Credits">
+          <span class="currency-icon">✦</span>
+          <span id="lobby-credits">2,500</span>
+        </div>
+        <button id="btn-audio-toggle" class="icon-btn" title="Audio On/Off">🔊</button>
+        <button id="btn-lobby-settings-top" class="icon-btn" title="Settings">⚙</button>
+      </div>
+    </header>
+
+    <!-- Left Wing: Pilot Stats & Quick Telemetry -->
+    <aside class="lobby-left-panel">
+      <div class="tactical-box">
+        <div class="box-header">
+          <span class="dot-orange"></span>
+          <span data-i18n="combat_record">REKOR TEMPUR</span>
+        </div>
+        <div class="stat-grid-mini">
+          <div class="mini-stat">
+            <span class="label" data-i18n="stat_kills">MUSUH JATUH</span>
+            <span class="val" id="stat-total-kills">0</span>
+          </div>
+          <div class="mini-stat">
+            <span class="label" data-i18n="stat_missions">MISI SELESAI</span>
+            <span class="val" id="stat-missions-done">0/5</span>
+          </div>
+          <div class="mini-stat">
+            <span class="label" data-i18n="stat_highscore">SKOR TERTINGGI</span>
+            <span class="val" id="stat-high-score">0</span>
+          </div>
+          <div class="mini-stat">
+            <span class="label" data-i18n="stat_fleet">ARMADA</span>
+            <span class="val">5 / 5 JET</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="drag-hint-pill">
+        <span>⟳</span> <span data-i18n="drag_rotate_hint">Geser layar untuk memutar kamera pesawat 360°</span>
+      </div>
+    </aside>
+
+    <!-- Right Wing: Main Navigation Buttons -->
+    <nav class="lobby-right-nav">
+      <button id="btn-nav-aircraft" class="nav-tile">
+        <span class="nav-icon">✈</span>
+        <div class="nav-text">
+          <strong data-i18n="btn_aircraft">AIRCRAFT</strong>
+          <small data-i18n="btn_aircraft_sub">Pilih Jet Tempur</small>
+        </div>
+      </button>
+
+      <button id="btn-nav-garage" class="nav-tile">
+        <span class="nav-icon">🛠</span>
+        <div class="nav-text">
+          <strong data-i18n="btn_garage">GARAGE</strong>
+          <small data-i18n="btn_garage_sub">Koleksi & Upgrade</small>
+        </div>
+      </button>
+
+      <button id="btn-nav-missions" class="nav-tile">
+        <span class="nav-icon">🎯</span>
+        <div class="nav-text">
+          <strong data-i18n="btn_missions">MISSIONS</strong>
+          <small data-i18n="btn_missions_sub">Mode & Operasi</small>
+        </div>
+      </button>
+
+      <button id="btn-nav-settings" class="nav-tile">
+        <span class="nav-icon">⚙</span>
+        <div class="nav-text">
+          <strong data-i18n="btn_settings">SETTINGS</strong>
+          <small data-i18n="btn_settings_sub">Grafis & Kontrol</small>
+        </div>
+      </button>
+    </nav>
+
+    <!-- Bottom Right: Mode Selector & PLAY Button -->
+    <div class="lobby-launch-dock">
+      <div class="mode-selector-box" id="btn-quick-mode">
+        <div class="mode-meta">
+          <span class="mode-tag" data-i18n="selected_mode">MODE TERPILIH</span>
+          <strong id="lobby-selected-mode">AIR COMBAT</strong>
+        </div>
+        <span class="mode-switch-arrow">▲</span>
+      </div>
+      <button id="btn-play" class="btn-play-main">
+        <span class="play-title" data-i18n="btn_play">PLAY</span>
+        <span class="play-sub" data-i18n="btn_play_sub">LEPAS LANDAS</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- 3. HANGAR / AIRCRAFT SELECTION SCREEN -->
+  <section id="screen-hangar" class="screen">
+    <header class="sub-header">
+      <button id="btn-hangar-back" class="btn-back">◀ <span data-i18n="btn_back">KEMBALI</span></button>
+      <h2 class="screen-heading" data-i18n="hangar_title">HANGGAR PEMILIHAN PESAWAT</h2>
+      <div class="header-spacer">
+        <button id="btn-toggle-auto-spin" class="btn-secondary-sm">⟳ AUTO 360°</button>
+      </div>
+    </header>
+
+    <!-- Left Aircraft Specs Card -->
+    <div id="hangar-spec-panel" class="spec-panel">
+      <div class="spec-badge" id="hangar-jet-role">MULTIROLE FIGHTER</div>
+      <h3 id="hangar-jet-name" class="spec-jet-title">F-16 FIGHTING FALCON</h3>
+      <p id="hangar-jet-desc" class="spec-jet-desc">
+        Pesawat tempur supersonik lincah dengan kemampuan manuver tinggi dan sistem avionik serbaguna.
+      </p>
+
+      <div class="spec-bars">
+        <div class="spec-row">
+          <div class="spec-label-row">
+            <span data-i18n="spec_speed">KECEPATAN (SPEED)</span>
+            <strong id="val-speed">2,120 km/h</strong>
+          </div>
+          <div class="spec-track"><div id="bar-speed" class="spec-fill" style="width:82%"></div></div>
+        </div>
+
+        <div class="spec-row">
+          <div class="spec-label-row">
+            <span data-i18n="spec_agility">KELINCAHAN (AGILITY)</span>
+            <strong id="val-agility">92 / 100</strong>
+          </div>
+          <div class="spec-track"><div id="bar-agility" class="spec-fill" style="width:92%"></div></div>
+        </div>
+
+        <div class="spec-row">
+          <div class="spec-label-row">
+            <span data-i18n="spec_durability">DAYA TAHAN (DURABILITY)</span>
+            <strong id="val-durability">78 / 100</strong>
+          </div>
+          <div class="spec-track"><div id="bar-durability" class="spec-fill" style="width:78%"></div></div>
+        </div>
+
+        <div class="spec-row">
+          <div class="spec-label-row">
+            <span data-i18n="spec_firepower">PERSENJATAAN (FIREPOWER)</span>
+            <strong id="val-firepower">84 / 100</strong>
+          </div>
+          <div class="spec-track"><div id="bar-firepower" class="spec-fill" style="width:84%"></div></div>
+        </div>
+      </div>
+
+      <div class="spec-actions">
+        <button id="btn-jet-preview" class="btn-outline-orange" data-i18n="btn_preview">PREVIEW 360°</button>
+        <button id="btn-jet-select" class="btn-primary-orange" data-i18n="btn_select">SELECT</button>
+      </div>
+    </div>
+
+    <!-- Preview Mode Exit Floating Bar -->
+    <div id="preview-exit-bar" class="preview-exit-bar hidden">
+      <span data-i18n="preview_hint">Mode Preview 360° — Geser untuk memutar pesawat</span>
+      <button id="btn-test-afterburner" class="btn-secondary-sm">🔥 AFTERBURNER</button>
+      <button id="btn-exit-preview" class="btn-primary-orange" data-i18n="exit_preview">TUTUP PREVIEW</button>
+    </div>
+
+    <!-- Bottom Aircraft Cards Carousel -->
+    <div id="hangar-carousel" class="aircraft-carousel"></div>
+  </section>
+
+  <!-- 3B. GARAGE COLLECTION & UPGRADE SCREEN -->
+  <section id="screen-garage" class="screen">
+    <header class="sub-header">
+      <button id="btn-garage-back" class="btn-back">◀ <span data-i18n="btn_back">KEMBALI</span></button>
+      <h2 class="screen-heading" data-i18n="garage_title">GARASI & KOLEKSI ARMADA</h2>
+      <div class="currency-pill">
+        <span class="currency-icon">✦</span>
+        <span id="garage-credits">2,500</span>
+      </div>
+    </header>
+
+    <div class="garage-layout">
+      <div class="garage-panel left">
+        <h3 data-i18n="fleet_collection">KOLEKSI PESAWAT (5/5 TERBUKA)</h3>
+        <div id="garage-fleet-list" class="garage-fleet-list"></div>
+      </div>
+
+      <div class="garage-panel right">
+        <h3 id="garage-selected-title">F-16 FIGHTING FALCON</h3>
+        <div class="garage-section">
+          <label data-i18n="select_livery">SKEMA WARNA / LIVERY</label>
+          <div id="livery-options" class="livery-grid"></div>
+        </div>
+
+        <div class="garage-section">
+          <label data-i18n="aircraft_upgrades">UPGRADE PERFORMA (GRATIS DENGAN POIN)</label>
+          <div id="upgrade-list" class="upgrade-list"></div>
+        </div>
+
+        <button id="btn-garage-equip" class="btn-primary-orange full-width" data-i18n="equip_and_fly">GUNAKAN PESAWAT INI</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. SETTINGS SCREEN (DCS-INSPIRED MODERN MILITARY UI) -->
+  <section id="screen-settings" class="screen">
+    <header class="sub-header">
+      <button id="btn-settings-back" class="btn-back">◀ <span data-i18n="btn_back">KEMBALI</span></button>
+      <h2 class="screen-heading" data-i18n="settings_title">PENGATURAN SISTEM & SIMULASI</h2>
+      <div class="lang-switch-wrap">
+        <button class="lang-btn active" data-lang="id">🇮🇩 ID</button>
+        <button class="lang-btn" data-lang="en">🇺🇸 EN</button>
+      </div>
+    </header>
+
+    <div class="settings-container">
+      <!-- Column 1: Graphics & Performance -->
+      <div class="settings-col">
+        <div class="settings-group-title" data-i18n="set_group_graphics">GRAFIS & PERFORMA</div>
+
+        <div class="setting-item">
+          <label data-i18n="set_graphics">Kualitas Grafis</label>
+          <div class="segmented-group" id="set-graphics-group">
+            <button data-val="low">LOW</button>
+            <button data-val="medium">MEDIUM</button>
+            <button data-val="high" class="active">HIGH</button>
+            <button data-val="ultra">ULTRA</button>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <label data-i18n="set_resolution">Resolusi Grafis</label>
+          <select id="set-resolution" class="tactical-select">
+            <option value="auto">Auto (Optimal Perangkat)</option>
+            <option value="1280x720">1280 × 720 (HD)</option>
+            <option value="1600x900">1600 × 900 (HD+)</option>
+            <option value="1920x1080">1920 × 1080 (Full HD)</option>
+          </select>
+        </div>
+
+        <div class="setting-item">
+          <label data-i18n="set_fps">Target Frame Rate (FPS)</label>
+          <div class="segmented-group" id="set-fps-group">
+            <button data-val="30">30 FPS</button>
+            <button data-val="60" class="active">60 FPS</button>
+            <button data-val="120">120 FPS</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Column 2: Camera & Controls -->
+      <div class="settings-col">
+        <div class="settings-group-title" data-i18n="set_group_controls">KAMERA & KONTROL</div>
+
+        <div class="setting-item">
+          <label data-i18n="set_camera_mode">Sudut Pandang Kamera</label>
+          <div class="segmented-group" id="set-camera-group">
+            <button data-val="third" class="active">Third Person</button>
+            <button data-val="first">First Person</button>
+            <button data-val="cinematic">Cinematic</button>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="slider-header">
+            <label data-i18n="set_cam_dist">Jarak Kamera Third-Person</label>
+            <span id="val-cam-dist" class="orange-val">13 m</span>
+          </div>
+          <input type="range" id="set-cam-dist" min="7" max="24" step="1" value="13" class="tactical-slider" />
+        </div>
+
+        <div class="setting-item">
+          <div class="slider-header">
+            <label data-i18n="set_sensitivity">Sensitivitas Kontrol</label>
+            <span id="val-sensitivity" class="orange-val">1.0x</span>
+          </div>
+          <input type="range" id="set-sensitivity" min="0.5" max="2.2" step="0.1" value="1.0" class="tactical-slider" />
+        </div>
+      </div>
+
+      <!-- Column 3: Audio & Language -->
+      <div class="settings-col">
+        <div class="settings-group-title" data-i18n="set_group_audio">AUDIO & BAHASA</div>
+
+        <div class="setting-item">
+          <div class="slider-header">
+            <label data-i18n="set_music_vol">Volume Musik Latar</label>
+            <span id="val-music-vol" class="orange-val">65%</span>
+          </div>
+          <input type="range" id="set-music-vol" min="0" max="100" step="5" value="65" class="tactical-slider" />
+        </div>
+
+        <div class="setting-item">
+          <div class="slider-header">
+            <label data-i18n="set_sfx_vol">Volume Efek Suara (SFX)</label>
+            <span id="val-sfx-vol" class="orange-val">85%</span>
+          </div>
+          <input type="range" id="set-sfx-vol" min="0" max="100" step="5" value="85" class="tactical-slider" />
+        </div>
+
+        <div class="setting-item">
+          <label data-i18n="set_language">Bahasa Antarmuka</label>
+          <div class="segmented-group" id="set-lang-group">
+            <button data-val="id" class="active">Bahasa Indonesia</button>
+            <button data-val="en">English</button>
+          </div>
+        </div>
+
+        <div class="settings-footer-btns">
+          <button id="btn-settings-reset" class="btn-secondary-sm" data-i18n="btn_reset">RESET DEFAULT</button>
+          <button id="btn-settings-apply" class="btn-primary-orange" data-i18n="btn_apply">APPLY & SIMPAN</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. MISSIONS & MODES SELECTION SCREEN -->
+  <section id="screen-missions" class="screen">
+    <header class="sub-header">
+      <button id="btn-missions-back" class="btn-back">◀ <span data-i18n="btn_back">KEMBALI</span></button>
+      <h2 class="screen-heading" data-i18n="missions_title">PILIH MODE & MISI OPERASI</h2>
+      <div class="header-spacer"></div>
+    </header>
+
+    <div class="missions-layout">
+      <!-- Game Modes Tabs -->
+      <div class="modes-sidebar">
+        <div class="sidebar-label" data-i18n="game_modes">MODE PERMAINAN</div>
+        <div id="mode-cards-list" class="mode-cards-list"></div>
+      </div>
+
+      <!-- Mission Details / Briefing Area -->
+      <div class="mission-detail-area">
+        <div id="campaign-list-wrap" class="campaign-list-wrap"></div>
+
+        <div class="briefing-card">
+          <div class="briefing-header">
+            <span id="briefing-badge" class="spec-badge">AIR COMBAT</span>
+            <span id="briefing-diff" class="diff-tag">NORMAL</span>
+          </div>
+          <h3 id="briefing-title">PERTEMPURAN UDARA SKUADRON</h3>
+          <p id="briefing-desc">
+            Hadapi formasi jet tempur musuh di atas kepulauan tropis. Kunci target dengan radar dan gunakan rudal untuk mendominasi langit.
+          </p>
+          <div class="briefing-meta-grid">
+            <div class="b-meta">
+              <span data-i18n="brief_env">WILAYAH</span>
+              <strong id="briefing-env">Kepulauan & Pangkalan Garuda</strong>
+            </div>
+            <div class="b-meta">
+              <span data-i18n="brief_obj">OBJEKTIF</span>
+              <strong id="briefing-obj">Hancurkan 4 Jet Tempur Musuh</strong>
+            </div>
+            <div class="b-meta">
+              <span data-i18n="brief_reward">HADIAH</span>
+              <strong id="briefing-reward">+450 XP • +600 Credits</strong>
+            </div>
+          </div>
+
+          <button id="btn-launch-mission" class="btn-primary-orange launch-btn" data-i18n="btn_launch">
+            MULAI MISI SEKARANG ✈
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. 3D GAMEPLAY & TACTICAL HUD SCREEN -->
+  <section id="screen-gameplay" class="screen">
+    <!-- First Person Cockpit Overlay Frame -->
+    <div id="cockpit-overlay" class="cockpit-overlay hidden">
+      <div class="canopy-arch"></div>
+      <div class="hud-glass-frame">
+        <div class="pitch-ladder">
+          <div class="pitch-line"><span>+10</span><span>+10</span></div>
+          <div class="pitch-line"><span>+05</span><span>+05</span></div>
+          <div class="pitch-line horizon"><span>— 00 —</span></div>
+          <div class="pitch-line"><span>-05</span><span>-05</span></div>
+          <div class="pitch-line"><span>-10</span><span>-10</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Damage Red Vignette Flash -->
+    <div id="damage-vignette" class="damage-vignette"></div>
+
+    <!-- Dynamic 3D Target Markers Container -->
+    <div id="target-markers-layer" class="target-markers-layer"></div>
+
+    <!-- HUD TOP: Mission Info, Compass Tape, AWACS Radio, Camera & Pause -->
+    <div class="hud-top">
+      <div class="hud-mission-box">
+        <div class="hud-score-line">
+          <span>SCORE: <strong id="hud-score">0</strong></span>
+          <span class="hud-sep">|</span>
+          <span id="hud-mode-tag">AIR COMBAT</span>
+        </div>
+        <div id="hud-objective" class="hud-objective">TARGET: 0 / 4 HOSTILES</div>
+      </div>
+
+      <div class="hud-center-top">
+        <!-- Compass Tape -->
+        <div class="compass-box">
+          <div class="compass-pointer">▼</div>
+          <div class="compass-readout"><span id="hud-heading-dir">N</span> <span id="hud-heading-deg">000°</span></div>
+          <div class="compass-ticks" id="compass-ticks">W • • • NW • • • N • • • NE • • • E</div>
+        </div>
+        <!-- AWACS Radio Message -->
+        <div id="awacs-banner" class="awacs-banner">
+          <span class="awacs-tag">AWACS //</span>
+          <span id="awacs-text">ALL SYSTEMS NOMINAL. CLEAR FOR ENGAGEMENT.</span>
+        </div>
+      </div>
+
+      <div class="hud-top-controls">
+        <div id="hud-cam-indicator" class="cam-badge">CAM: 3RD PERSON</div>
+        <button id="btn-hud-camera" class="hud-top-btn" title="Ganti Kamera">🎥 CAM</button>
+        <button id="btn-hud-pause" class="hud-top-btn warn" title="Pause">❚❚</button>
+      </div>
+    </div>
+
+    <!-- Warning Alert Banner (Pull Up / Missile Incoming / Boundary) -->
+    <div id="hud-warning-alert" class="hud-warning-alert hidden">⚠ PULL UP — ALTITUDE LOW</div>
+
+    <!-- HUD CENTER-LEFT & CENTER-RIGHT: SPEED & ALTITUDE BRACKETS (Ace Combat Style) -->
+    <div class="hud-telemetry-left">
+      <div class="tele-label">SPEED</div>
+      <div class="tele-box"><span id="hud-speed">840</span></div>
+      <div class="tele-sub" id="hud-mach">MACH 0.68</div>
+    </div>
+
+    <div class="hud-center-reticle">
+      <div class="boresight-cross">+</div>
+      <div id="lock-circle" class="lock-circle hidden">
+        <span id="lock-status-text">LOCKING</span>
+      </div>
+    </div>
+
+    <div class="hud-telemetry-right">
+      <div class="tele-label">ALT</div>
+      <div class="tele-box"><span id="hud-alt">1250</span></div>
+      <div class="tele-sub">METERS</div>
+    </div>
+
+    <!-- HUD BOTTOM-LEFT: CIRCULAR MINI RADAR -->
+    <div class="hud-radar-wrap">
+      <canvas id="radar-canvas" width="140" height="140"></canvas>
+      <div class="radar-label">RADAR 12KM</div>
+    </div>
+
+    <!-- HUD BOTTOM-RIGHT: WEAPONS & AIRCRAFT INTEGRITY STATUS -->
+    <div class="hud-weapons-wrap">
+      <div class="weapon-readout-list">
+        <div class="w-row"><span>GUN</span><strong id="hud-gun-status">RDY</strong></div>
+        <div class="w-row"><span>MSL</span><strong id="hud-msl-count">6 / 6</strong></div>
+        <div class="w-row"><span>FLR</span><strong id="hud-flr-count">4 / 4</strong></div>
+        <div class="w-row"><span>HULL</span><strong id="hud-hull-pct" class="ok">100%</strong></div>
+      </div>
+      <div class="hull-bar-outer">
+        <div id="hud-hull-bar" class="hull-bar-inner" style="width: 100%;"></div>
+      </div>
+    </div>
+
+    <!-- MOBILE TOUCH CONTROLS LAYER (Ergonomic, Non-Overlapping) -->
+    <div id="touch-controls" class="touch-controls">
+      <!-- Left Analog Flight Stick -->
+      <div id="joystick-zone" class="joystick-zone">
+        <div class="joystick-base">
+          <div class="joystick-ring"></div>
+          <div id="joystick-knob" class="joystick-knob"></div>
+        </div>
+      </div>
+
+      <!-- Throttle Control Slider (Left-Center) -->
+      <div class="throttle-zone">
+        <button id="btn-thr-up" class="thr-step-btn">+</button>
+        <div class="thr-track-wrap">
+          <input type="range" id="touch-throttle" min="20" max="100" value="65" orient="vertical" />
+          <span id="hud-throttle-pct">65%</span>
+        </div>
+        <button id="btn-thr-down" class="thr-step-btn">−</button>
+      </div>
+
+      <!-- Right Action Controls Cluster -->
+      <div class="right-controls-zone">
+        <!-- Pitch Up / Down Quick Buttons -->
+        <div class="pitch-btn-col">
+          <button id="btn-pitch-up" class="tact-btn small" aria-label="Pitch Up">▲<small>UP</small></button>
+          <button id="btn-pitch-down" class="tact-btn small" aria-label="Pitch Down">▼<small>DN</small></button>
+        </div>
+
+        <!-- Tactical Maneuver & Flare -->
+        <div class="tactical-btn-col">
+          <button id="btn-maneuver" class="tact-btn med blue" aria-label="Maneuver">⟳<small>ROLL</small></button>
+          <button id="btn-flare" class="tact-btn med amber" aria-label="Flare">✦<small>FLARE</small></button>
+        </div>
+
+        <!-- Primary Weapons: Missile & Vulcan Gun -->
+        <div class="weapon-btn-col">
+          <button id="btn-missile" class="tact-btn missile" aria-label="Missile">🚀<small>MSL</small></button>
+          <button id="btn-fire-gun" class="tact-btn fire" aria-label="Fire Gun">🔥<small>FIRE</small></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. PAUSE OVERLAY MODAL -->
+  <div id="modal-pause" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-top-accent"></div>
+      <h2 data-i18n="pause_title">SIMULASI DIJEDA</h2>
+      <p id="pause-mission-sub" class="modal-sub">AIR COMBAT • F-16 FIGHTING FALCON</p>
+
+      <div class="modal-btn-stack">
+        <button id="btn-resume" class="btn-primary-orange" data-i18n="btn_resume">▶ LANJUTKAN TERBANG</button>
+        <button id="btn-pause-camera" class="btn-secondary" data-i18n="btn_switch_cam">🎥 GANTI SUDUT KAMERA</button>
+        <button id="btn-pause-settings" class="btn-secondary" data-i18n="btn_settings">⚙ PENGATURAN</button>
+        <button id="btn-pause-restart" class="btn-secondary" data-i18n="btn_restart">↻ ULANGI MISI</button>
+        <button id="btn-pause-lobby" class="btn-danger" data-i18n="btn_exit_lobby">⌂ KELUAR KE LOBI UTAMA</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. VICTORY / DEFEAT RESULT SCREEN -->
+  <section id="screen-result" class="screen">
+    <div class="result-card">
+      <div id="result-badge" class="result-badge victory">MISSION ACCOMPLISHED</div>
+      <h1 id="result-title" class="result-title">KEMENANGAN UDARA</h1>
+      <p id="result-subtitle" class="result-subtitle">Seluruh target udara musuh berhasil dilumpuhkan.</p>
+
+      <div class="result-stats-grid">
+        <div class="r-stat">
+          <span data-i18n="res_kills">MUSUH DIHANCURKAN</span>
+          <strong id="res-kills">4</strong>
+        </div>
+        <div class="r-stat">
+          <span data-i18n="res_time">WAKTU TERBANG</span>
+          <strong id="res-time">02:18</strong>
+        </div>
+        <div class="r-stat">
+          <span data-i18n="res_score">TOTAL SKOR</span>
+          <strong id="res-score">4,850</strong>
+        </div>
+        <div class="r-stat">
+          <span data-i18n="res_reward">HADIAH XP & CREDITS</span>
+          <strong id="res-reward" class="orange-val">+450 XP / +600 ✦</strong>
+        </div>
+      </div>
+
+      <div class="result-xp-progress">
+        <div class="xp-row">
+          <span>PILOT LEVEL <strong id="res-level">1</strong></span>
+          <span id="res-levelup-tag" class="levelup-pill hidden">LEVEL UP!</span>
+        </div>
+        <div class="xp-bar-container large">
+          <div id="res-xp-fill" class="xp-bar-fill" style="width: 60%;"></div>
+        </div>
+      </div>
+
+      <div class="result-actions">
+        <button id="btn-result-replay" class="btn-secondary" data-i18n="btn_play_again">↻ MAIN LAGI</button>
+        <button id="btn-result-next" class="btn-primary-orange" data-i18n="btn_next_mission">MISI BERIKUTNYA ▶</button>
+        <button id="btn-result-lobby" class="btn-secondary" data-i18n="btn_back_lobby">⌂ LOBI UTAMA</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCRIPTS (Order matters: Data -> Audio -> Textures -> 3D Engine -> Gameplay -> UI Controller) -->
+  <script src="js/data.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/textures.js"></script>
+  <script src="js/engine3d.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/ui.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "SKY WARRIORS 3D",
+  "short_name": "SkyWarriors3D",
+  "description": "3D HD Fighter Jet Flight & Aerial Combat Simulator for Android & PC",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#090c10",
+  "theme_color": "#f97316"
+}
